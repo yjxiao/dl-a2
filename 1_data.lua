@@ -1,8 +1,33 @@
+----------------------------------------------------------------------
+-- This script is used to load STL-10 data and preprocess it to 
+-- facilitate training.
+--
+-- Preprocessing procedure include conversion to grayscale image,
+-- augmenting images by rotation, scaling and flipping, and a patch
+-- extraction process described in Miclut et al. 2014.
+--
+-- By Group BearCat
+----------------------------------------------------------------------
+
 -- load required packages
 require 'torch'
 require 'image'
 require 'xlua'
 matio = require 'matio'
+
+----------------------------------------------------------------------
+-- parse command line arguments
+if not opt then
+   print '==> processing options'
+   cmd = torch.CmdLine()
+   cmd:text()
+   cmd:text('STL-10 Dataset Preprocessing')
+   cmd:text()
+   cmd:text('Options:')
+   cmd:option('-noaug', true, 'do not include augmented data')
+   cmd:text()
+   opt = cmd:parse(arg or {})
+end
 
 -- define functions
 function preprocess(X, y)
@@ -20,6 +45,35 @@ function preprocess(X, y)
    end
 
    return data
+end
+
+function augment(data)
+   -- rotate, scale, flip images to do augmentation
+   local n = data.size * 4
+   augmented = {
+      X = torch.Tensor(n, 1, 96, 96),
+      y = torch.Tensor(n),
+      size = n
+   }
+
+   for i = 1, data.size do
+      xlua.progress(i, data.size)   -- display progress      
+      local x = data.X[i]
+      local label = data.y[i]
+      -- rotate +/- 10
+      augmented.X[(i-1)*4+1] = image.rotate(x, math.pi/18)
+      augmented.X[(i-1)*4+2] = image.rotate(x, -math.pi/18)
+      -- flip left/right
+      augmented.X[(i-1)*4+3] = image.hflip(x)
+      -- scale by 1/3
+      local temp = image.scale(x, 128)
+      augmented.X[(i-1)*4+4] = image.crop(temp, 16, 16, 112, 112)
+      for j = 1, 4 do
+	 augmented.y[(i-1)*4+j] = data.y[i]
+      end
+   end
+
+   return augmented
 end
 
 function patchify(data, n_patches, kW, kH, dW, dH, seed)
@@ -60,13 +114,38 @@ function patchify(data, n_patches, kW, kH, dW, dH, seed)
    return patches
 end
 
-print '==> loading images'
-train_file = '../train.mat'
---test_file = '../test.mat'
-loaded = matio.load(train_file)
+-- load matlab file if t7 file is not present
+if not paths.filep('train.t7') then
+   print '==> loading images'
+   train_file = '../train.mat'
+   --test_file = '../test.mat'
+   loaded = matio.load(train_file)
+   print '==> converting to greyscale'
+   trdata = preprocess(loaded.X, loaded.y)
+   torch.save('train.t7', trdata)   
+-- otherwise load t7 file directly
+else
+   print '==> loading data'   
+   trdata = torch.load('train.t7')
+end
 
-print '==> converting to greyscale'
-trdata = preprocess(loaded.X, loaded.y)
+if opt.noaug then
+   -- augmenting image if augmented.t7 is not present
+   if not paths.filep('augmented.t7') then
+      print '==> augmenting images'
+      augmented = augment(trdata)
+      torch.save('augmented.t7', augmented)   
+   else
+      print '==> loading augmented data'   
+      augmented = torch.load('augmented.t7')
+   end
+end
 
 print '==> extracting patches'
-pats = patchify(trdata, 10, 16, 16)
+n_p = 10
+patch_size = 16
+pats = patchify(trdata, n_p, patch_size, patch_size)
+if opt.noaug then
+   pats_aug = patchify(augmented, n_p, patch_size, patch_size)
+   pats = torch.cat(pats, pats_aug, 1)   
+end
