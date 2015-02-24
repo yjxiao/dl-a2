@@ -28,10 +28,18 @@ function normalize(patches)
 end
 
 -- normalize and zca whitening, then use k-means to find centroids
-pats = torch.load('patches.t7')
+data_dir = '/scratch/yx887/courses/ds-ga-1008/dl-a2/'
+pat_file = paths.concat(data_dir, 'patches.t7')
+print('==> loading patches')
+pats = torch.load(pat_file)
+print('==> normalizing patches')
 normalize(pats)
+print('==> zca whitening')
 whitened_pats = unsup.zca_whiten(pats)
 k = 300
 patchsize = 16
-cents = unsup.kmeans(whitened_pats, k, 1000):reshape(k, patchsize, patchsize)
-torch.save('centroids.t7', cents)
+print('==> calculating centroids')
+cents = unsup.kmeans(whitened_pats, k, 5000):reshape(k, patchsize, patchsize)
+cent_file = paths.concat(data_dir, 'centroids.t7')
+print('==> saving centroids')
+torch.save(cent_file, cents)
