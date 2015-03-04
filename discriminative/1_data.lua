@@ -188,23 +188,22 @@ print('==> loaded')
 -- Because data is in column-major, transposing the last 2 dimensions gives result that can be correctly visualized
 
 n_unlabeled = data:size()[1]
-print('==> extracting and augmenting')
-patch_size = 48
+patch_size = 32
 n_used = 10000
 batch_size = 500
 n_batch = 20
 n_trans = 150
 idx = torch.randperm(n_unlabeled)[{{1, n_used}}]
-for i = 1, n_batch do
-   augmented = torch.Tensor(batch_size*n_trans, 3, patch_size, patch_size)
-   for j = 1, batch_size do
-      xlua.progress((i-1)*batch_size+j, n_used)
-      first = (j-1) * n_trans + 1
-      temp = patchify(data[{{idx[(i-1)*batch_size+j]}, {}, {}, {}}]:double():transpose(3, 4), patch_size, n_trans)
-      print(#temp)
-      print(first+n_trans-1)
-      augmented[{{first, first+n_trans-1}, {}, {}, {}}] = temp
-   end
-   file_name = 'augmented_'..i..'.t7'
-   torch.save(paths.concat(save_dir, file_name), augmented)
+data_aux = torch.Tensor(n_used, 3, 96, 96)
+print('==> copying selected data')
+for i = 1, n_used do
+   xlua.progress(i, n_used)
+   data_aux[i] = data[idx[i]]:double():transpose(2, 3)
 end
+print('==> augmenting data')
+for i = 1, n_batch do
+   xlua.progress(i, n_batch)
+   file_name = 'augmented_unfolded_'..i..'.t7'
+   torch.save(paths.concat(save_dir, file_name), patchify(data_aux[{{(i-1)*batch_size+1, i*batch_size}}], patch_size, n_trans):reshape(75000,3*32*32))
+end
+
