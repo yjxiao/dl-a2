@@ -13,7 +13,7 @@ require 'image'
 require 'xlua'
 
 -- number of surrogate classes
-noutputs = 2000
+noutputs = 4000
 
 -- input dimensions
 nfeats = 3

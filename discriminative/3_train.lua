@@ -52,7 +52,7 @@ optimState = {
 optimMethod = optim.sgd
 
 classes = {}
-for i = 1, 2000 do
+for i = 1, 4000 do
    classes[i] = i
 end
 confusion = optim.ConfusionMatrix(classes)

@@ -10,11 +10,12 @@ cmd:option('-seed', 1, 'fixed input seed for repeatable experiments')
 cmd:option('-threads', 2, 'number of threads')
 -- training:
 cmd:option('-save', 'result', 'subdirectory to save/log experiments in')
-cmd:option('-learningRate', 3e-4, 'learning rate at t=0')
+cmd:option('-learningRate', 1e-3, 'learning rate at t=0')
 cmd:option('-batchSize', 1, 'mini-batch size (1 = pure stochastic)')
 cmd:option('-weightDecay', 0, 'weight decay (SGD only)')
 cmd:option('-momentum', 0.9, 'momentum (SGD only)')
 cmd:option('-type', 'cuda', 'type: double | float | cuda')
+cmd:option('-plot', true)
 cmd:text()
 opt = cmd:parse(arg or {})
 
@@ -36,14 +37,14 @@ print('==> loading training data')
 data_dir = '/scratch/yx887/courses/ds-ga-1008/dl-a2/'
 src_dir = '/home/yx887/documents/ds-ga-1008/dl-a2/discriminative'
 
-loaded = torch.load(paths.concat(data_dir, 'train2_4000x120.t7'))
-n_im = 4000
-trsize = 120 * n_im
+loaded = torch.load(paths.concat(data_dir, 'train_sc1000_135.t7'))
+--trsize = loaded:size(1)
+n_im = 1000
+trsize=135 * n_im
 y = torch.Tensor(trsize)
 for i= 1, n_im do
-   y[{{(i-1)*120+1, i*120}}] = i
+   y[{{(i-1)*135+1, i*135}}] = i
 end
-
 trainData = {
    data = loaded[{{1, trsize}}]:reshape(trsize, 3, 32, 32),
    labels = y,
@@ -51,11 +52,12 @@ trainData = {
 }
 
 print('==> loading test data')
-loaded = torch.load(paths.concat(data_dir, 'test2_4000x30.t7'))
-tesize = 30 * n_im
+loaded = torch.load(paths.concat(data_dir, 'test_sc1000_15.t7'))
+--tesize = loaded:size(1)
+tesize = 15 * n_im
 y = torch.Tensor(tesize)
 for i= 1, n_im do
-   y[{{(i-1)*30+1, i*30}}] = i
+   y[{{(i-1)*15+1, i*15}}] = i
 end
 testData = {
    data = loaded[{{1,tesize}}]:reshape(tesize, 3, 32, 32),
@@ -70,19 +72,10 @@ mean = trainData.data:mean(1)
 trainData.data:add(-1, mean:expand(trsize, 3, 32, 32))
 testData.data:add(-1, mean:expand(tesize, 3, 32, 32))
 
-torch.save('mean2_4000.t7', mean)
 ----------------------------------------------------------------------
-print('==> executing all')
+print '==> loading model'
+model = torch.load(paths.concat(src_dir, 'model_opt.net'))
+preds = model:forward(testData.data[{{11, 20}}]:cuda())
+garbage, labels = preds:max(2)
+print(labels)
 
-dofile(paths.concat(src_dir, '2_model.lua'))
-dofile(paths.concat(src_dir, '3_train.lua'))
-dofile(paths.concat(src_dir, '4_test.lua'))
-
-----------------------------------------------------------------------
-
-print('==> training!')
-max_test_acc = 0
-while true do
-   train()
-   test()
-end

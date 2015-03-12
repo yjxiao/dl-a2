@@ -36,7 +36,7 @@ print('==> loading training data')
 data_dir = '/scratch/yx887/courses/ds-ga-1008/dl-a2/'
 src_dir = '/home/yx887/documents/ds-ga-1008/dl-a2/discriminative'
 
-loaded = torch.load(paths.concat(data_dir, 'train2_4000x120.t7'))
+loaded = torch.load(paths.concat(data_dir, 'train3_4000x120.t7'))
 n_im = 4000
 trsize = 120 * n_im
 y = torch.Tensor(trsize)
@@ -51,7 +51,7 @@ trainData = {
 }
 
 print('==> loading test data')
-loaded = torch.load(paths.concat(data_dir, 'test2_4000x30.t7'))
+loaded = torch.load(paths.concat(data_dir, 'test3_4000x30.t7'))
 tesize = 30 * n_im
 y = torch.Tensor(tesize)
 for i= 1, n_im do
@@ -70,7 +70,7 @@ mean = trainData.data:mean(1)
 trainData.data:add(-1, mean:expand(trsize, 3, 32, 32))
 testData.data:add(-1, mean:expand(tesize, 3, 32, 32))
 
-torch.save('mean2_4000.t7', mean)
+torch.save('mean3_4000.t7', mean)
 ----------------------------------------------------------------------
 print('==> executing all')
 
